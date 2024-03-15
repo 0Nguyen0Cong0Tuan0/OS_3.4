@@ -4,7 +4,7 @@
 
 using namespace std;
 
-int sector_size = 512;
+const int sector_size = 512;
 
 void createFiles(string volumePath, int sectorsPerCluster) 
 {
