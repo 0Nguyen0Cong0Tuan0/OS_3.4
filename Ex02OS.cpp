@@ -232,7 +232,7 @@ string stringToHex(string input)
     return result.str();
 }
 
-string inputString() 
+string inputStringFor16Chars() 
 {
     string input;
     getline(cin, input);
@@ -243,6 +243,22 @@ string inputString()
     
     // If input length is less than 16, append spaces until length is 16
     while (input.length() < 16) 
+        input += ' ';
+
+    return input;
+}
+
+string inputStringFor4Chars() 
+{
+    string input;
+    getline(cin, input);
+
+    // If input length is more than 16, truncate to 16 characters
+    if (input.length() > 4) 
+        input = input.substr(0, 4);
+    
+    // If input length is less than 16, append spaces until length is 16
+    while (input.length() < 4) 
         input += ' ';
 
     return input;
@@ -265,7 +281,8 @@ void setFilePassword(const string& volumeName, const string& fileName) {
     string name = stringToHex(fileName.substr(0, dotPos));
     int namePos = findFileIndex(volumeName, name);
 
-    if (namePos == -1) {
+    if (namePos == -1) 
+    {
         cout << "File not found in the volume." << endl;
         return;
     }
@@ -280,7 +297,7 @@ void setFilePassword(const string& volumeName, const string& fileName) {
     string userInput;
     do {
         cout << "Enter the current password for file: ";
-        userInput = stringToHex(encrypt(inputString()));
+        userInput = stringToHex(encrypt(inputStringFor16Chars()));
 
         if (userInput != currentPassword) 
             cout << "Try again\n";
@@ -288,13 +305,9 @@ void setFilePassword(const string& volumeName, const string& fileName) {
 
     // Prompt the user to enter the new password
     cout << "Enter the new password: ";
-    userInput = encrypt(inputString());
+    userInput = stringToHex(encrypt(inputStringFor16Chars()));
 
-    for (int i = userInput.length(); i < 16; i++) {
-        userInput += " ";
-    }
-
-    userInput = stringToHex(userInput);
+    file.close();
 
     ofstream outFile(volumeName, ios::binary | ios::in | ios::out);
     outFile.seekp(namePos * SIZE + SIZE - 32, ios::beg);
@@ -302,6 +315,53 @@ void setFilePassword(const string& volumeName, const string& fileName) {
     outFile.close();
 
     cout << "Password updated successfully." << endl;
+}
+
+void setVolumePassword(string filename)
+{
+    string pass;
+    cout << "Input your password only 4 characters (If your password has over 4 characters, just take 4 first characters): ";
+    pass = stringToHex(encrypt(inputStringFor4Chars()));
+
+    ofstream outFile(filename, ios::binary | ios::in | ios::out);
+    outFile.seekp(18);
+    outFile.write(pass.c_str(), 8);
+    outFile.close();
+    
+    cout << "Password updated successfully." << endl;
+}
+
+void changeVolumePassword(string filename)
+{
+    ifstream fin(filename, ios::binary); // Open the file with the given filename
+    fin.seekg(18); // Move the file pointer to the 19th byte (index 18)
+
+    string pass; // String to store the password
+    pass.resize(8); // Resize the string to accommodate 8 characters
+
+    fin.read(&pass[0], 8); // Read 8 characters (the password) from the file
+
+    string userInput;
+    do {
+        cout << "Enter the current password for file: ";
+        userInput = stringToHex(encrypt(inputStringFor16Chars()));
+
+        if (userInput != pass) 
+            cout << "Try again\n";
+    } while (userInput != pass);
+
+    // Prompt the user to enter the new password
+    cout << "Enter the new password: ";
+    userInput = stringToHex(encrypt(inputStringFor16Chars()));
+
+    ofstream outFile(filename, ios::binary | ios::in | ios::out);
+    outFile.seekp(18);
+    outFile.write(userInput.c_str(), 8);
+    outFile.close();
+
+    cout << "Password updated successfully." << endl;
+
+    fin.close(); // Close the file
 }
 
 // Hàm chép (Import) 1 tập tin từ bên ngoài vào MyFS

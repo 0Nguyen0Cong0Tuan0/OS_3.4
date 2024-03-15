@@ -8,6 +8,7 @@ int sector_size = 512;
 
 void createFiles(string volumePath, int sectorsPerCluster) 
 {
+    // Loop to create 100 files
     for (int i = 0; i < 100; i++) 
     {
         string filename = volumePath + "F" + to_string(i) + ".Dat";
@@ -16,8 +17,9 @@ void createFiles(string volumePath, int sectorsPerCluster)
 
         if (file.is_open()) 
         {
+            // Calculate the number of clusters needed for this file
             int fileSizeInBytes = (4 - (i % 4)) * sectorsPerCluster * sector_size;
-  
+
             while (file.tellp() < fileSizeInBytes) 
             { 
                 file << 2020 + i << "\n";
@@ -32,7 +34,7 @@ void createFiles(string volumePath, int sectorsPerCluster)
 }
 
 int main() {
-    string volumePaths[] = {"G:\\", "H:\\", "I:\\"};
+    string volumePaths[] = {"G:\\", "H:\\", "I:\\"}; // Path to FAT, NTFS and FAT32 volumes
     int clusterSizes[] = {8, 4, 2}; // Cluster sizes for FAT, NTFS, and FAT32 volumes
     for (int i = 0; i < 3; i++) {
         createFiles(volumePaths[i] , clusterSizes[i]);
