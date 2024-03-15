@@ -25,10 +25,10 @@ class File {
 };
 
 struct BootSector {
-    char osName[6];
+    char osName[4];
     short startDataSector;
     char startClusterTable;
-    int password;
+    char password[4];
     char sectorPerCluster;
     char sectorBootSize;
     short sizeClusterTable;
@@ -39,10 +39,33 @@ struct BootSector {
     int sizeVolumeBytes;
     short endSignature;
 };
+struct Entry {
+    char fileName[31];       // Tên tập tin
+    char fileExtension[3];   // Tên mở rộng
+    char createHour, createMinute, createSecond;    // Giờ tạo
+    char createDay, createMonth, createYear;    // Ngày tạo
+    uint32_t size;           // Kích thước
+    uint32_t startCluster;   // Cluster bắt đầu
+    char password[16];       // Password
+
+    Entry(const string& fileName, const string& fileExtension, const string& createHour, const string& createMinute, const string& createSecond, const string& createDay, const string& createMonth, const string& createYear, uint32_t size, uint32_t startCluster, const string& password) {
+        strcpy(this->fileName, fileName.c_str());
+        strcpy(this->fileExtension, fileExtension.c_str());
+        this->createHour = stoi(createHour.substr(0, 2));
+        this->createMinute = stoi(createMinute.substr(3, 2));
+        this->createSecond = stoi(createSecond.substr(6, 2));
+        this->createDay = stoi(createDay.substr(0, 2));
+        this->createMonth = stoi(createMonth.substr(3, 2));
+        this->createYear = stoi(createYear.substr(6, 4));
+        this->size = size;
+        this->startCluster = startCluster;
+        strcpy(this->password, password.c_str());
+    }
+};
 
 // Hàm tạo / định dạng volume MyFS.Dat
 void createVolume(const string& volumeName, int maxVolumeSize, int clusterSize) {
-    ofstream outFile(volumeName, ios::binary | ios::out);
+    ofstream outFile(volumeName, ios::binary);
     if (!outFile) {
         cerr << "Error: Unable to create volume!" << endl;
         return;
@@ -57,30 +80,16 @@ void createVolume(const string& volumeName, int maxVolumeSize, int clusterSize) 
         bytesWritten++;
     }
     outFile.close();
-
-    // // Tạo vùng System và Data với kích thước tương ứng
-    // char* systemArea = new char[BLOCK_SIZE * clusterSize];
-    // char* dataArea = new char[maxVolumeSize - BLOCK_SIZE * clusterSize];
-
-    // // Khởi tạo vùng System và Data với các giá trị mặc định
-
-    // // Ghi các thông tin vào volume
-    // outFile.write(systemArea, BLOCK_SIZE * clusterSize);
-    // outFile.write(dataArea, maxVolumeSize - BLOCK_SIZE * clusterSize);
-
-    // outFile.close();
-    // delete[] systemArea;
-    // delete[] dataArea;
 }
 
 //Format Boot Sector
-void formatBootSector(const string& volumeName){
+void formatBootSector(const string& volumeName, string password){
 
     BootSector bootSector;
-    strcpy(bootSector.osName, "CUSTOM");
+    strcpy(bootSector.osName, "TEST");
     bootSector.startDataSector = 4091;
     bootSector.startClusterTable = 1;
-    bootSector.password = 1234;
+    strcpy(bootSector.password, password.c_str());
     bootSector.sectorPerCluster = 4;
     bootSector.sectorBootSize = 1;
     bootSector.sizeClusterTable = 2045;
@@ -90,8 +99,8 @@ void formatBootSector(const string& volumeName){
     bootSector.sizeSector = 512;
     bootSector.sizeVolumeBytes = 1073741824;
     bootSector.endSignature = 0xAA55;
-    
-    std::fstream file(volumeName, std::ios::binary | std::ios::in | std::ios::out);
+
+    std::ofstream file(volumeName, std::ios::binary);
 
     if (!file) {
         std::cerr << "Failed to open file for writing." << std::endl;
@@ -101,7 +110,6 @@ void formatBootSector(const string& volumeName){
     std::streampos offset = 0;
 
     // Data to be written to the file
-    const char data[] = "Hello, Binary World!";
 
     // Move the put pointer to the desired offset
     file.seekp(offset, std::ios::beg);
@@ -111,43 +119,77 @@ void formatBootSector(const string& volumeName){
 
     // Close the file
     file.close();
-    // // Open MyFS.Dat file
-    // ofstream outFile(volumeName, ios::binary);
-     
-    // std::streampos offset = 0;
-    // outFile.seekp(offset, std::ios::beg);
-
-    // // Write boot sector to file
-
-    // // Close file
-    // outFile.close();
 }
 
-
-
 // Hàm đọc dữ liệu từ volume theo từng cụm 512 byte (block)
-void readBlock(const string& volumeName, int blockNumber, char* buffer) {
+void readBlock(const string& volumeName, int blockNumber) {
     ifstream inFile(volumeName, ios::binary);
     if (!inFile) {
         cerr << "Error: Unable to open volume!" << endl;
         return;
     }
     inFile.seekg(blockNumber * BLOCK_SIZE);
-    inFile.read(buffer, BLOCK_SIZE);
     inFile.close();
 }
 
 // Hàm ghi dữ liệu vào volume theo từng cụm 512 byte (block)
-void writeBlock(const string& volumeName, int blockNumber, const char* buffer) {
+void writeBlock(const string& volumeName, int blockNumber) {
     ofstream outFile(volumeName, ios::binary | ios::in);
     if (!outFile) {
         cerr << "Error: Unable to open volume!" << endl;
         return;
     }
     outFile.seekp(blockNumber * BLOCK_SIZE);
-    outFile.write(buffer, BLOCK_SIZE);
     outFile.close();
 }
+
+//
+void formatVungData(const string& volumnName){
+    //Tao random cac file luu vao vung data
+    ofstream ofs(volumnName, ios::binary);
+    writeBlock(volumnName, 4091);
+
+    Entry file1("example", "txt", "12", "30", "00", "01", "01", "2021", 0, 4091, "1234");
+    Entry file2("example2", "txt", "12", "30", "00", "01", "01", "2021", 0, 4091, "1234");
+    Entry file3("example3", "txt", "12", "30", "00", "01", "01", "2021", 0, 4091, "1234");
+    Entry file4("example4", "txt", "12", "30", "00", "01", "01", "2021", 0, 4091, "1234");
+
+    ofs.write(reinterpret_cast<char*>(&file1), sizeof(Entry));
+    ofs.write(reinterpret_cast<char*>(&file2), sizeof(Entry));
+    ofs.write(reinterpret_cast<char*>(&file3), sizeof(Entry));
+    ofs.write(reinterpret_cast<char*>(&file4), sizeof(Entry));
+
+    ofs.close();
+}
+
+void formatBangQuanLyCluster(const string& volumnName){
+    int count = 0;
+    for (int i = 2; i <= 523265; i++){
+        readBlock(volumnName, 4091 + count);
+        char buffer;
+        ifstream ifs(volumnName, ios::binary);
+        ifs.read(&buffer, 1);
+        if (buffer == 0){
+            writeBlock(volumnName, 1);
+            ofstream ofs(volumnName, ios::binary);
+            ofs.seekp(512 + i, ios::beg);
+            short cluster = 0;
+            ofs.write(reinterpret_cast<char*>(&cluster), sizeof(char));
+            ofs.close();
+        }
+        else{
+            writeBlock(volumnName, 1);
+            ofstream ofs(volumnName, ios::binary);
+            ofs.seekp(512 + i, ios::beg);
+            short cluster = 0xFFEF;
+            ofs.write(reinterpret_cast<char*>(&cluster), sizeof(char));
+            ofs.close();
+        }
+        ifs.close();
+        count += 4;
+    }
+}
+
 
 int findFileIndex(const string& volumeName, const string& fileName) {
     ifstream file(volumeName, ios::binary);
@@ -219,7 +261,7 @@ void setPassword(const string& volumeName, File file, const string& newPassword)
 
 // Hàm liệt kê danh sách các tập tin trong MyFS
 void listFiles(const string& volumeName) {
-
+    
 }
 
 string stringToHex(string input) 
@@ -304,6 +346,8 @@ void setFilePassword(const string& volumeName, const string& fileName) {
     cout << "Password updated successfully." << endl;
 }
 
+
+
 // Hàm chép (Import) 1 tập tin từ bên ngoài vào MyFS
 void importFile(const string& volumeName, const string& externalFileName, const string& internalFileName, const string& password = "") {
     // Code xử lý chép (import) 1 tập tin từ bên ngoài vào MyFS
@@ -320,11 +364,27 @@ void deleteFile(const string& volumeName, const string& fileName, const string& 
 }
 
 int main() {
-    // Sử dụng các hàm để thực hiện các chức năng tương ứng
-    // Ví dụ:
+    
+    //Tao/Dinh dang volume MyFS.Dat
+    cout << "Tao/Dinh dang volume MyFS.Dat" << endl;
+    cout << "Nhap mat khau volume (4 ki tu): " << endl;
+    string password;
+    getline(cin, password);
     const string volumeName = "MyFS.Dat";
-    // createVolume(volumeName, 1024 * 1024 * 1024, 4096);
-    formatBootSector(volumeName);
+    cout << "Tao volume MyFS.Dat co kich thuoc 1GiB";
+    createVolume(volumeName, 1024 * 1024 * 1024, 4096);
+    formatBootSector(volumeName, password);
+    cout << "Tao ngau nhien 4 tap tin trong vung data" << endl;
+    formatVungData(volumeName);
+    cout << "Da format vung data" << endl;
+    formatBangQuanLyCluster(volumeName);
+    cout << "Da format bang quan ly cluster" << endl;
+    
+    //Thiet lap/Doi/Kiem tra mat khau truy xuat MyFS
+
+
+
+
     // setPassword("MyFS.Dat", "newPassword");
     // listFiles("MyFS.Dat");
     // setFilePassword("MyFS.Dat", "example.txt");
